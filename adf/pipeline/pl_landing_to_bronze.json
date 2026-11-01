@@ -1,0 +1,102 @@
+{
+	"name": "pl_landing_to_bronze",
+	"properties": {
+		"activities": [
+			{
+				"name": "lkp_bronze_ingestion_metadata",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "\nSELECT\n    ingestion_id,\n    connection_id,\n    source_schema,\n    source_object,\n    object_type,\n    load_type,\n    target_container,\n    target_folder,\n    file_format\nFROM metadata_schema.ingestion_object\nWHERE is_active = 1;\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_sqlserver_source",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "metadata_schema",
+							"table_name": "ingestion_object"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "fe_process_landing_objects",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "lkp_bronze_ingestion_metadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('lkp_bronze_ingestion_metadata').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "nb_execute_landing_to_bronze",
+							"type": "DatabricksNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebookPath": "/Users/reddy@reddysai25outlook.onmicrosoft.com/nb_landing_to_bronze",
+								"baseParameters": {
+									"source_system": {
+										"value": "@if(\r\n    equals(item().connection_id,1),'sqlserver',if(equals(item().connection_id,2),'mysql','sftp')\r\n    )",
+										"type": "Expression"
+									},
+									"source_object": {
+										"value": "@item().source_object",
+										"type": "Expression"
+									},
+									"landing_path": {
+										"value": "@concat('abfss://',item().target_container,'@sthybridlakeprojectdev.dfs.core.windows.net/',item().target_folder,'/')\n",
+										"type": "Expression"
+									},
+									"bronze_path": {
+										"value": "@concat('abfss://bronze@sthybridlakeprojectdev.dfs.core.windows.net/',item().target_folder,'/')\n",
+										"type": "Expression"
+									},
+									"load_id": {
+										"value": "@concat(\n    pipeline().RunId,\n    '_',\n    string(item().ingestion_id)\n    )",
+										"type": "Expression"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ls_databricks_hybrid_lakehouse",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			}
+		],
+		"annotations": []
+	}
+}

@@ -1,0 +1,126 @@
+{
+	"name": "pl_ingest_mysql_to_landing",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup_MySQL_Objects",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\n    ingestion_id,\n    connection_id,\n    source_object,\n    object_type,\n    load_type,\n    target_container,\n    target_folder,\n    file_format\nFROM metadata_schema.ingestion_object\nWHERE connection_id = 2\n  AND is_active = 1;",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_sqlserver_source",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "metadata",
+							"table_name": "ingestion_object"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEachItems",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup_MySQL_Objects",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup_MySQL_Objects').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Copy data",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "MySqlSource"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_mysql_source",
+									"type": "DatasetReference",
+									"parameters": {
+										"table_name": {
+											"value": "@item().source_object",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_adls_parquet_sink",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": {
+											"value": "@item().target_container",
+											"type": "Expression"
+										},
+										"folder_path": {
+											"value": "@item().target_folder",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2026-10-25T21:55:25Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

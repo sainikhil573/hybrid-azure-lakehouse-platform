@@ -1,0 +1,102 @@
+{
+	"name": "pl_bronze_to_silver",
+	"properties": {
+		"activities": [
+			{
+				"name": "lkp_silver_ingestion_metadata",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\n    ingestion_id,\n    connection_id,\n    source_schema,\n    source_object,\n    target_container,\n    target_folder\nFROM metadata_schema.ingestion_object\nWHERE is_active = 1\n  AND source_object IN (\n      'category', 'subcategory', 'product',\n      'calendar', 'channel', 'promotion',\n      'transactions_2021',\n      'transactions_2022',\n      'transactions_2023'\n  )\nORDER BY\n    CASE source_object\n        WHEN 'category' THEN 1\n        WHEN 'subcategory' THEN 2\n        WHEN 'product' THEN 3\n        WHEN 'calendar' THEN 4\n        WHEN 'channel' THEN 5\n        WHEN 'promotion' THEN 6\n        WHEN 'transactions_2021' THEN 7\n        WHEN 'transactions_2022' THEN 8\n        WHEN 'transactions_2023' THEN 9\n    END;",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_sqlserver_source",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "metadata_schema",
+							"table_name": "ingestion_object"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "fe_process_silver_objects",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "lkp_silver_ingestion_metadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('lkp_silver_ingestion_metadata').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "nb_bronze_to_silver_parameterized",
+							"type": "DatabricksNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebookPath": "/Workspace/Users/reddy@reddysai25outlook.onmicrosoft.com/nb_bronze_to_silver_parameterized.ipynb",
+								"baseParameters": {
+									"source_system": {
+										"value": "@if(equals(item().connection_id,1),'sqlserver',if(equals(item().connection_id,2),'mysql','sftp'))",
+										"type": "Expression"
+									},
+									"source_object": {
+										"value": "@item().source_object",
+										"type": "Expression"
+									},
+									"bronze_path": {
+										"value": "@concat('abfss://bronze@sthybridlakeprojectdev.dfs.core.windows.net/',item().target_folder,'/')",
+										"type": "Expression"
+									},
+									"silver_path": {
+										"value": "@concat('abfss://silver@sthybridlakeprojectdev.dfs.core.windows.net/',item().target_folder,'/')",
+										"type": "Expression"
+									},
+									"load_id": {
+										"value": "@concat(pipeline().RunId,'_',string(item().ingestion_id))",
+										"type": "Expression"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ls_databricks_hybrid_lakehouse",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			}
+		],
+		"annotations": []
+	}
+}

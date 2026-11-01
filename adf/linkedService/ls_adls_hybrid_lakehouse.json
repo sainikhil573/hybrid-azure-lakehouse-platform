@@ -1,0 +1,11 @@
+{
+  "name": "ls_adls_hybrid_lakehouse",
+  "type": "Microsoft.DataFactory/factories/linkedservices",
+  "properties": {
+    "annotations": [],
+    "type": "AzureBlobFS",
+    "typeProperties": {
+      "url": "https://sthybridlakeprojectdev.dfs.core.windows.net/"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+	"name": "adf-hybrid-lakehouse-dev",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "59c64e0b-e1d7-475c-9b75-72480798a944",
+		"tenantId": "9436a91b-b088-418d-9326-34bcba74586c"
+	}
+}

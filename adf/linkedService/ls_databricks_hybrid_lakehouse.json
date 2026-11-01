@@ -1,0 +1,12 @@
+{
+  "name": "ls_databricks_hybrid_lakehouse",
+  "type": "Microsoft.DataFactory/factories/linkedservices",
+  "properties": {
+    "annotations": [],
+    "type": "AzureDatabricks",
+    "typeProperties": {
+      "domain": "https://adb-7405604475041096.16.azuredatabricks.net",
+      "existingClusterId": "1029-151409-8bg7sdya"
+    }
+  }
+}

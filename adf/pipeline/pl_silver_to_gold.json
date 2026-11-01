@@ -1,0 +1,28 @@
+{
+	"name": "pl_silver_to_gold",
+	"properties": {
+		"activities": [
+			{
+				"name": "nb_execute_silver_to_gold",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Workspace/Users/reddy@reddysai25outlook.onmicrosoft.com/nb_silver_to_gold.ipynb"
+				},
+				"linkedServiceName": {
+					"referenceName": "ls_databricks_hybrid_lakehouse",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"annotations": []
+	}
+}

@@ -1,0 +1,6 @@
+{
+	"name": "shir-hybrid-lakehouse-dev",
+	"properties": {
+		"type": "SelfHosted"
+	}
+}

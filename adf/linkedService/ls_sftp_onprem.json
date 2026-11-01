@@ -1,0 +1,19 @@
+{
+  "name": "ls_sftp_onprem",
+  "type": "Microsoft.DataFactory/factories/linkedservices",
+  "properties": {
+    "annotations": [],
+    "type": "Sftp",
+    "typeProperties": {
+      "host": "localhost",
+      "port": 22,
+      "skipHostKeyValidation": true,
+      "authenticationType": "Basic",
+      "userName": "sftp_reader"
+    },
+    "connectVia": {
+      "referenceName": "shir-hybrid-lakehouse-dev",
+      "type": "IntegrationRuntimeReference"
+    }
+  }
+}

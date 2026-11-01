@@ -1,0 +1,131 @@
+{
+	"name": "pl_ingest_sqlserver_to_landing",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup_SQLServer_Objects",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\n    ingestion_id,\n    connection_id,\n    source_schema,\n    source_object,\n    object_type,\n    load_type,\n    target_container,\n    target_folder,\n    file_format\nFROM metadata_schema.ingestion_object\nWHERE connection_id = 1\n  AND is_active = 1\n  AND source_object = 'transactions_2021';",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_sqlserver_source",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": "metadata_schema",
+							"table_name": "ingestion_object"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup_SQLServer_Objects",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup_SQLServer_Objects').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Copy data",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "DynamicRange",
+									"partitionSettings": {
+										"partitionColumnName": "ProductKey",
+										"partitionUpperBound": "2517",
+										"partitionLowerBound": "1"
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_sqlserver_source",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": {
+											"value": "@item().source_schema",
+											"type": "Expression"
+										},
+										"table_name": "@item().source_object"
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_adls_parquet_sink",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": {
+											"value": "@item().target_container",
+											"type": "Expression"
+										},
+										"folder_path": "@item().target_folder"
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2026-10-25T15:21:13Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
